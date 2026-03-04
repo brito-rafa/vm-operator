@@ -534,6 +534,10 @@ class SchemaMigration:
             ),
             (self.step_run_make_generate, "Running make generate"),
             (
+                self.step_add_manual_conversion_stubs,
+                "Adding manual conversion stubs to api/{old}",
+            ),
+            (
                 self.step_run_make_generate_go_conversions,
                 "Running make generate-go-conversions",
             ),
@@ -1644,7 +1648,94 @@ class SchemaMigration:
         self._run_make("generate")
 
     # -------------------------------------------------------------------------
-    # Step 19: Run make generate-go-conversions
+    # Step 19: Add manual conversion stubs to old API
+    # -------------------------------------------------------------------------
+
+    def step_add_manual_conversion_stubs(self) -> None:
+        """Add manual Convert_NEWHUB_SubType_To_OLDVER_SubType stubs to the
+        old API's conversion files before generate-go-conversions runs.
+
+        When conversion-gen finds a pre-existing Convert_* function it only
+        generates autoConvert_* for that type, leaving the manual wrapper as a
+        customisation point. Stubs are added for *Spec and *Status sub-types of
+        each root type that appears in a ConvertTo receiver.
+        """
+        old_ver = self.ctx.old_ver
+        new_ver = self.ctx.new_ver
+        old_api_dir = self.ctx.old_api_dir
+
+        # Collect struct type names declared directly in the old API package.
+        struct_types = self._struct_type_names(old_api_dir)
+
+        for conv_file in sorted(old_api_dir.glob("*_conversion.go")):
+            content = self.ops.read_file(conv_file)
+
+            # Only process files that were just converted to spoke form.
+            if "ConvertTo" not in content:
+                continue
+
+            # Find root types from ConvertTo receivers (e.g. VirtualMachine).
+            root_types = re.findall(r"func \(src \*(\w+)\) ConvertTo\b", content)
+
+            stubs: list[str] = []
+            for root_type in root_types:
+                if root_type.endswith("List"):
+                    continue
+                for suffix in ("Spec", "Status"):
+                    sub_type = f"{root_type}{suffix}"
+                    if sub_type not in struct_types:
+                        continue
+                    func_name = (
+                        f"Convert_{new_ver}_{sub_type}_To_{old_ver}_{sub_type}"
+                    )
+                    if func_name in content:
+                        continue  # Already exists.
+                    stubs.append(sub_type)
+
+            if not stubs:
+                continue
+
+            # Ensure the apiconversion import is present.
+            if "apiconversion" not in content:
+                content = content.replace(
+                    '\tctrlconversion "sigs.k8s.io/controller-runtime/pkg/conversion"',
+                    '\tapiconversion "k8s.io/apimachinery/pkg/conversion"\n'
+                    '\tctrlconversion "sigs.k8s.io/controller-runtime/pkg/conversion"',
+                )
+
+            # Append one stub per sub-type.
+            lines: list[str] = []
+            for sub_type in stubs:
+                func_name = (
+                    f"Convert_{new_ver}_{sub_type}_To_{old_ver}_{sub_type}"
+                )
+                auto_func = (
+                    f"autoConvert_{new_ver}_{sub_type}_To_{old_ver}_{sub_type}"
+                )
+                lines += [
+                    "",
+                    f"func {func_name}(",
+                    f"\tin *vmopv1.{sub_type}, out *{sub_type},"
+                    f" s apiconversion.Scope) error {{",
+                    "",
+                    f"\treturn {auto_func}(in, out, s)",
+                    "}",
+                ]
+
+            content = content.rstrip("\n") + "\n" + "\n".join(lines) + "\n"
+            self.ops.write_file(conv_file, content)
+
+    def _struct_type_names(self, api_dir: Path) -> set[str]:
+        """Return names of all struct types declared in *.go files at api_dir level."""
+        names: set[str] = set()
+        for go_file in api_dir.glob("*.go"):
+            text = go_file.read_text(encoding="utf-8")
+            for m in re.finditer(r"^type\s+(\w+)\s+struct\b", text, re.MULTILINE):
+                names.add(m.group(1))
+        return names
+
+    # -------------------------------------------------------------------------
+    # Step 20: Run make generate-go-conversions
     # -------------------------------------------------------------------------
 
     def step_run_make_generate_go_conversions(self) -> None:
@@ -1652,7 +1743,7 @@ class SchemaMigration:
         self._run_make("generate-go-conversions")
 
     # -------------------------------------------------------------------------
-    # Step 20: Run make manager-only
+    # Step 21: Run make manager-only
     # -------------------------------------------------------------------------
 
     def step_run_make_manager_only(self) -> None:
@@ -1660,7 +1751,7 @@ class SchemaMigration:
         self._run_make("manager-only")
 
     # -------------------------------------------------------------------------
-    # Step 21: Run make lint-go-full
+    # Step 22: Run make lint-go-full
     # -------------------------------------------------------------------------
 
     def step_run_make_lint_go_full(self) -> None:
@@ -1668,7 +1759,7 @@ class SchemaMigration:
         self._run_make("lint-go-full")
 
     # -------------------------------------------------------------------------
-    # Step 22: Run make generate-api-docs
+    # Step 23: Run make generate-api-docs
     # -------------------------------------------------------------------------
 
     def step_run_make_generate_api_docs(self) -> None:
@@ -1676,7 +1767,7 @@ class SchemaMigration:
         self._run_make("generate-api-docs")
 
     # -------------------------------------------------------------------------
-    # Step 23: Update documentation
+    # Step 24: Update documentation
     # -------------------------------------------------------------------------
 
     def step_update_docs(self) -> None:
