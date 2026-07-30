@@ -2,10 +2,8 @@ version: 2
 updates:
   - package-ecosystem: "gomod"
     # Update go.mod files stored in these directories daily 
-    open-pull-requests-limit: 2 # Not sure why there would ever be more than 1, just would not want to hide anything
     directories:
       - "/"
-      - "/test/e2e"
       - "/hack/tools"
     schedule:
       interval: "daily"
