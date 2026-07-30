@@ -5,6 +5,7 @@ updates:
     directories:
       - "/"
       - "/hack/tools"
+      - "/test/e2e"
     schedule:
       interval: "daily"
     ignore:
@@ -12,3 +13,4 @@ updates:
       - dependency-name: "github.com/vmware-tanzu/net-operator-api"
       - dependency-name: "github.com/vmware-tanzu/nsx-operator/pkg/apis"
       - dependency-name: "github.com/vmware/govmomi"
+      - dependency-name: "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
