@@ -1,9 +1,14 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
-    # Update go.mod files stored in these directories daily 
+    # Update go.mod files stored in these directories daily
     directories:
       - "/"
       - "/hack/tools"
     schedule:
       interval: "daily"
+    ignore:
+      - dependency-name: "github.com/vmware-tanzu/image-registry-operator-api"
+      - dependency-name: "github.com/vmware-tanzu/net-operator-api"
+      - dependency-name: "github.com/vmware-tanzu/nsx-operator/pkg/apis"
+      - dependency-name: "github.com/vmware/govmomi"
