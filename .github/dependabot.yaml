@@ -8,11 +8,7 @@ updates:
       - "/test/e2e"
     schedule:
       interval: "daily"
-    groups:
-      # Group all go.mod updates into a single PR
-      all-go-dependencies:
-        patterns:
-          - "*"
+    group-by: "dependency-name"
     ignore:
       - dependency-name: "github.com/vmware-tanzu/image-registry-operator-api"
       - dependency-name: "github.com/vmware-tanzu/net-operator-api"
