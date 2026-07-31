@@ -1,5 +1,9 @@
 version: 2
 updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
   - package-ecosystem: "gomod"
     # Update go.mod files stored in these directories daily
     directories:
@@ -18,19 +22,27 @@ updates:
       golang-x-libs:
         patterns:
           - "golang.org/x/*"
+      # Go ci
+      golang-ci:
+        patterns:
+          - "github.com/golangci/*"
       # Testing Frameworks (Ginkgo & Gomega)
-      testing:
+      testing-modules:
         patterns:
           - "github.com/onsi/ginkgo/*"
           - "github.com/onsi/gomega"
       # Telemetry, Observability & Metrics
-      observability:
+      observability-modules:
         patterns:
           - "github.com/prometheus/*"
           - "go.opentelemetry.io/*"
           - "go.uber.org/zap"
-      # All other dependencies
-      all-go-other-dependencies:
+      # Logs
+      log-modules:
+        patterns:
+          - "github.com/go-logr/*"
+      # Go other dependencies
+      go-other-dependencies:
         patterns:
           - "*"
 
