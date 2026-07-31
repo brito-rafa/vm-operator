@@ -5,11 +5,18 @@ updates:
     directories:
       - "/"
       - "/hack/tools"
+      - "/test/e2e"
     schedule:
       interval: "daily"
+    groups:
+      # Group all go.mod updates into a single PR
+      all-go-dependencies:
+        patterns:
+          - "*"
     ignore:
       - dependency-name: "github.com/vmware-tanzu/image-registry-operator-api"
       - dependency-name: "github.com/vmware-tanzu/net-operator-api"
       - dependency-name: "github.com/vmware-tanzu/nsx-operator/pkg/apis"
       - dependency-name: "github.com/vmware/govmomi"
-      - dependency-name: "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
+      # TODO: address the split of google genproto into api and rpc 
+      - dependency-name: "google.golang.org/genproto/googleapis/*"
