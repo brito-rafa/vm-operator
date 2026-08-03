@@ -51,5 +51,3 @@ updates:
       - dependency-name: "github.com/vmware-tanzu/net-operator-api"
       - dependency-name: "github.com/vmware-tanzu/nsx-operator/pkg/apis"
       - dependency-name: "github.com/vmware/govmomi"
-      # TODO: address the split of google genproto into multiple modules 
-      - dependency-name: "google.golang.org/genproto/*"
