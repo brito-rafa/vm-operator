@@ -38,6 +38,10 @@ variables:
   EnvWorkloadIsolation: "FSS_WCP_WORKLOAD_DOMAIN_ISOLATION"
   # E2E Namespace used for the VM service tests. If not set, a random namespace will be created.
   E2ENamespace: "${E2E_NAMESPACE:-}"
+  # Dedicated static library fixture for the experimental slow-preparation test.
+  SlowContentLibraryDir: "${E2E_SLOW_CONTENT_LIBRARY_DIR:-}"
+  SlowContentLibraryURL: "${E2E_SLOW_CONTENT_LIBRARY_URL:-}"
+  SlowContentLibraryListenAddress: "${E2E_SLOW_CONTENT_LIBRARY_LISTEN_ADDRESS:-0.0.0.0:8080}"
 
 intervals:
   # Please keep the wait-virtual-machine values in sync between the different

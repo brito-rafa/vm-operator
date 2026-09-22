@@ -39,6 +39,17 @@ var _ = Describe("Testing VM Services", Label("devops"), Label("viadmin"), Label
 		})
 	})
 
+	Context("VI-ADMIN-CL-SLOW-PREPARATION", func() {
+		viadmin.VIAdminSlowCLSpec(func() viadmin.VIAdminCLSpecInput {
+			return viadmin.VIAdminCLSpecInput{
+				ClusterProxy:   svClusterProxy,
+				Config:         config,
+				WCPClient:      wcpClient,
+				ArtifactFolder: artifactFolder,
+			}
+		})
+	})
+
 	Context("VI-ADMIN-NS-ROLE", func() {
 		viadmin.VIAdminNamespaceRoleSpec(context.TODO(), func() viadmin.VIAdminNamespaceRoleSpecInput {
 			return viadmin.VIAdminNamespaceRoleSpecInput{

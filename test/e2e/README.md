@@ -139,6 +139,9 @@ The primary configuration is in `vmservice/config/wcp.yaml`:
 | `STORAGE_CLASS` | Storage class for VMs | `wcpglobal-storage-profile` | ❌ |
 | `E2E_KUBECONFIG_PATH` | Supervisor kubeconfig path (set by `setup-testbed-env.sh --e2e`; a unique file per invocation avoids concurrent local runs stomping on each other) | `~/.kube/wcp-config` | ❌ |
 | `E2E_NAMESPACE` | Fixed namespace for tests | Random namespace | ✅ |
+| `E2E_SLOW_CONTENT_LIBRARY_DIR` | Static single-item published library root for the experimental slow-preparation test | Unset; test skipped | ❌ |
+| `E2E_SLOW_CONTENT_LIBRARY_URL` | vCenter-reachable HTTP URL for that fixture's `/lib.json` | Unset; test skipped | ❌ |
+| `E2E_SLOW_CONTENT_LIBRARY_LISTEN_ADDRESS` | Test runner address on which to serve the slow library fixture | `0.0.0.0:8080` | ❌ |
 | `TEST_FOCUS` | Ginkgo focus pattern | All tests | ✅ |
 | `TEST_SKIP` | Ginkgo skip pattern | No skips | ✅ |
 | `LABEL_FILTER` | Ginkgo label filter | No filter | ✅ |
@@ -165,6 +168,25 @@ make e2e-smoke E2E_NAMESPACE=my-test-ns  # Uses "my-test-ns" namespace
 - Consistent test isolation
 
 ## Writing New Tests
+
+### Slow content-library preparation
+
+`VI-ADMIN-CL-SLOW-PREPARATION` is labeled `content-library-backoff`, `extended-functional`, and `experimental`. It uses the deployed operator and a real on-demand vCenter subscription. The test serves a dedicated static library, evicts the subscribed item's cached files, holds OVF GETs for 25 minutes, and then releases them. It requires the resulting namespace-scoped `VirtualMachineImage` to become Ready with disks and a provider content version. Operator logs must show that the original download session performed both preparation and completion; a retry with a new session fails the test. The test does not query or renew that session, because doing so could conceal an idle-expiry bug.
+
+Run on a dedicated testbed with `CONTENT_API_WAIT_SECS=5s` and verbosity `--v=4` or higher configured on the operator before the run. Wait for the deployment rollout to finish. The test reads these settings and logs; it does not alter the deployment. The deployed feature configuration must exercise `pkg/providers/vsphere/contentlibrary`'s download-session path. A cache or alternate image path that bypasses it fails the preparation assertion instead of producing a false pass. Keep the normal content-library idle timeout so the test can detect session expiry.
+
+Prepare a **dedicated static published library export** containing exactly one valid, security-compliant OVF image with at least one disk. Put `lib.json` at its root, alongside all referenced item manifests and content files. All manifest download links must be relative and resolve within this directory; links to the original publisher would bypass the fixture. The directory is served over HTTP for the duration of the test. The test runner's listening port must be reachable from vCenter, including through any container port mapping or firewall. Metadata and HEAD requests are served immediately. After the initial subscription synchronization, OVF GETs trickle one byte every ten seconds and withhold completion until released, preserving the original content and checksum while avoiding an idle HTTP connection. Use an OVF descriptor larger than 256 bytes so that the slow prefix lasts through the hold. If the target vCenter retains the OVF after eviction or prefetches it before VM Operator prepares it, the test fails its fixture/path assertion and requires a testbed configuration that actually exercises slow preparation.
+
+```bash
+export E2E_SLOW_CONTENT_LIBRARY_DIR=/path/to/dedicated-library-export
+export E2E_SLOW_CONTENT_LIBRARY_URL=http://TEST_RUNNER_IP:8080/lib.json
+export E2E_SLOW_CONTENT_LIBRARY_LISTEN_ADDRESS=0.0.0.0:8080
+make test-e2e-ginkgo \
+  TEST_FOCUS=VI-ADMIN-CL-SLOW-PREPARATION \
+  LABEL_FILTER='content-library-backoff && experimental'
+```
+
+Allow up to 50 minutes plus normal suite setup and cleanup. The 25-minute hold crosses the growth phase and first plateau wait at a five-second seed, including jitter; completion has a separate 15-minute deadline. The test is serial and always releases held requests and removes its namespace and subscribed library, even after failure. Operator restarts or interrupted log streams fail the session-continuity check. This is regression coverage for the session-lifetime issue and can fail until that product fix is applied. Keep `experimental` until the scenario passes on a real WCP cluster.
 
 ### Test Structure
 
